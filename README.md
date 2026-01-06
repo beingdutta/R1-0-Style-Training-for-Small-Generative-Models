@@ -15,23 +15,43 @@ Unlike traditional pipelines that rely on massive Supervised Fine-Tuning (SFT) t
 
 **Key Differentiator:** We skip the SFT phase entirely. The model starts with a "Cold Start" and learns to reason purely by maximizing a quantitative reward signal.
 
-## 📊 Experimental Results
+## 📊 Comprehensive Benchmarks
 
-Our experiments show that **GRPO-only training consistently outperforms SFT** on quantitative reasoning benchmarks, even without seeing human reasoning traces during training.
+We conducted extensive experiments comparing **SFT (Supervised Fine-Tuning)** vs. **GRPO (Reinforcement Learning)** across multiple model sizes and benchmarks.
 
-### 🏆 Performance Comparison (GRPO vs. SFT)
+### 1. The "Style Drift" Phenomenon (TDIUC Dataset)
+This table highlights the core finding: **GRPO improves accuracy but degrades cosine similarity** to human ground truth. This indicates the model evolves its *own* reasoning style rather than mimicking the human annotations.
 
-| Model | Benchmark | SFT (Rank 32) | **GRPO (Rank 64)** | **Improvement** |
+| Model | Size | Strategy | Rank | **Accuracy (EM)** | **Reasoning Similarity (Cos)** |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Qwen2-VL** | 2B | SFT | 32 | 81.85% | **99.42%** |
+| **Qwen2-VL** | 2B | GRPO | 32 | **86.97%** 🟢 | 24.47% |
+| **SmolVLM** | 500M | SFT | 32 | 70.82% | **97.38%** |
+| **SmolVLM** | 500M | GRPO | 32 | **72.60%** 🟢 | 20.37% |
+| **SmolVLM** | 256M | SFT | 32 | 63.70% | **94.26%** |
+| **SmolVLM** | 256M | GRPO | 32 | **67.70%** 🟢 | 11.34% |
+
+### 2. Generalization to Unseen Benchmarks (Qwen2-VL 2B)
+GRPO training on the TDIUC dataset led to significant emergent generalizations on completely different counting benchmarks (TallyQA and CountQA).
+
+| Benchmark | Difficulty | SFT (Rank 32) | **GRPO (Rank 64)** | **Improvement** |
 | :--- | :--- | :--- | :--- | :--- |
-| **Qwen2-VL-2B** | **TDIUC** (Quantity) | 81.85% | **86.97%** | 🟢 **+5.1%** |
-| | **TallyQA** (Simple) | 76.25% | **80.01%** | 🟢 **+3.8%** |
-| | **TallyQA** (Complex) | 53.71% | **63.75%** | 🟢 **+10.0%** |
-| | **CountQA** (Hard) | 13.39% | **21.98%** | 🟢 **+8.6%** |
-| **SmolVLM-256M**| **TDIUC** (Quantity) | 63.70% | **67.70%** | 🟢 **+4.0%** |
-| | **CountQA** (Hard) | 4.00% | **5.49%** | 🟢 **+1.5%** |
+| **TallyQA** | Simple | 76.25% | **80.01%** | 🟢 **+3.76%** |
+| **TallyQA** | Complex | 53.71% | **63.75%** | 🟢 **+10.04%** |
+| **CountQA** | Hardest | 13.39% | **21.98%** | 🟢 **+8.59%** |
 
-> **Note on "Style Drift":** While accuracy improved, the Cosine Similarity to human ground truth dropped significantly (e.g., from 99% in SFT to ~24% in GRPO). This indicates the model developed its **own** reasoning style rather than mimicking the human annotations.
+### 3. Impact of LoRA Rank (Robustness)
+We analyzed how the LoRA Rank ($R$) affects performance. GRPO remains highly effective even at higher ranks, whereas SFT performance can degrade (likely due to overfitting).
 
+| Model | Strategy | Rank | **Accuracy** | **Reasoning Similarity** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Qwen2-VL** | SFT | $R=32$ | **81.85%** | 99.42% |
+| **Qwen2-VL** | SFT | $R=64$ | 70.02% 🔻 | 90.21% |
+| | | | | |
+| **Qwen2-VL** | GRPO | $R=32$ | **86.97%** | 24.47% |
+| **Qwen2-VL** | GRPO | $R=64$ | **85.68%** | 54.58% |
+
+---
 
 ## 🧠 Core Philosophy
 
@@ -48,7 +68,6 @@ To guide the model from random guessing to structured reasoning, we use a compos
 * **Accuracy Reward:** +1.0 if the numeric answer matches the ground truth.
 * **Reasoning Steps Reward:** +0.1 per valid reasoning step (e.g., "1. ", "2. "), capped at 1.0. This prevents "one-line" lazy reasoning.
 * **Keyword/Cosine Reward (Optional):** Used in advanced runs to encourage descriptiveness (mentioning colors/shapes) without forcing exact word matching.
-
 
 ## 💻 Installation
 
